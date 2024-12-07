@@ -56,25 +56,24 @@ class GridDominationGUI:
             font=('Arial', 12, 'bold')
         )
         self.player_label.pack()
-        
     
     def on_cell_click(self, row, col):
-    #Ensure it's the player's turn
-        if self.game.current_player != "P1":
-            messagebox.showwarning("Invalid Turn", "Wait for your turn!")
-            return
-        
-        # Validate move
-        if self.game.is_valid_move(row, col):
+        # Player's Turn Logic
+        if self.game.current_player == 'P1':
+            # Validate player's move
+            if not self.game.is_valid_move(row, col):
+                messagebox.showwarning("Invalid Move", "This cell is already occupied!")
+                return
+            
             # Make player's move
             self.game.make_move(row, col)
             
             # Update button for player's move
             self.buttons[row][col].config(
-                text='X', 
-                state=tk.DISABLED, 
+                text='X',
+                state=tk.DISABLED,
                 disabledforeground='blue',
-                bg='lightblue'  # Optional: add visual feedback
+                bg='lightblue'
             )
             
             # Update scores
@@ -82,49 +81,57 @@ class GridDominationGUI:
                 text=f"Player Score: {self.game.scores['P1']} | AI Score: {self.game.scores['P2']}"
             )
             
-            # Check game over condition
+            # Check if the game is over
             if self.game.is_game_over():
                 self.end_game()
                 return
             
-            # Prepare for AI's turn
+            # Switch to AI's turn
             self.player_label.config(text="AI's Turn")
             self.root.update()
-            
-            # AI's move selection
-            if self.game.start:
-                ai_row, ai_col = self.game.random_play()
-                self.game.start = 0
-            else:
+        
+        # AI's Turn Logic
+        if self.game.current_player == 'P2':
+            # AI's move selection with robust error handling
+            try:
                 ai_row, ai_col = self.game.best_move()
-            
-            # Ensure AI move is valid
-            if self.game.is_valid_move(ai_row, ai_col):
+                
+                # Ensure the AI move is valid
+                if not self.game.is_valid_move(ai_row, ai_col):
+                    # Fallback to random play if best move is invalid
+                    ai_row, ai_col = self.game.random_play()
+                
+                # Make AI's move
                 self.game.make_move(ai_row, ai_col)
                 
                 # Update button for AI's move
                 self.buttons[ai_row][ai_col].config(
-                    text='O', 
-                    state=tk.DISABLED, 
+                    text='O',
+                    state=tk.DISABLED,
                     disabledforeground='red',
-                    bg='lightsalmon'  # Optional: add visual feedback
+                    bg='lightsalmon'
                 )
                 
-                # Update scores after AI's move
+                # Update scores
                 self.score_label.config(
                     text=f"Player Score: {self.game.scores['P1']} | AI Score: {self.game.scores['P2']}"
                 )
                 
-                # Check game over condition
+                # Check if the game is over
                 if self.game.is_game_over():
                     self.end_game()
                 else:
                     # Back to player's turn
                     self.player_label.config(text="Your Turn")
-            else:
-                messagebox.showerror("AI Error", "AI could not make a valid move!")
-        else:
-            messagebox.showwarning("Invalid Move", "This cell is already occupied!")
+                    self.root.update()
+            
+            except Exception as e:
+                # Comprehensive error handling
+                messagebox.showerror("AI Move Error", f"An error occurred: {str(e)}")
+                # Optionally, you might want to end the game or reset
+                self.end_game()
+
+
     def end_game(self):
         """
         Handle end of game, show winner and final scores.
@@ -151,6 +158,7 @@ class GridDominationGUI:
         Start the GUI game loop.
         """
         self.root.mainloop()
+        
 
 def main():
     from grid_domination import GridDominationGameAI  # Import your game class
