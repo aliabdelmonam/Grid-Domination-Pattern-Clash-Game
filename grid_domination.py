@@ -48,23 +48,30 @@ class GridDominationGameAI:
               col (int): Column of the most recently placed cell
           """
           player_code='X' if self.current_player =='P1' else 'O'
-
-          if self.check_cons(row,col,player_code):                 # horizontal and vertical
-            self.scores[self.current_player] += self.pattern_scores['3-line']
-            remove_list = self.rest_con(row,col,player_code)
-            self.reset_mark(remove_list,player_code)
+          if self.reset_H(row,col,player_code)[0]:
+              self.scores[self.current_player] += self.pattern_scores['full-row-col']
+              remove_list = self.reset_H(row,col,player_code)[1]
+              self.reset_mark(remove_list,player_code)
+          if self.reset_V(row,col,player_code)[0]:
+              self.scores[self.current_player] += self.pattern_scores['full-row-col']
+              remove_list = self.reset_V(row,col,player_code)[1]
+              self.reset_mark(remove_list,player_code)
           if self.check_dig(row,col,player_code):                   # diagonal
               self.scores[self.current_player] += self.pattern_scores['diagonal']
               remove_list = self.reset_dia(row,col,player_code)
+              self.reset_mark(remove_list,player_code)
+          if self.reset_L(row,col,player_code)[0]:
+              self.scores[self.current_player] += self.pattern_scores['L-shape']
+              remove_list = self.reset_L(row,col,player_code)[1]
               self.reset_mark(remove_list,player_code)
           if self.reset_squ(row,col,player_code)[0]:                         #square
               self.scores[self.current_player] += self.pattern_scores['2x2-square']
               remove_list = self.reset_squ(row,col,player_code)[1]
               self.reset_mark(remove_list,player_code)
-          if self.reset_H(row,col,player_code)[0]:
-              self.scores[self.current_player] += self.pattern_scores['full-row-col']
-          if self.reset_V(row,col,player_code)[0]:
-              self.scores[self.current_player] += self.pattern_scores['full-row-col']
+          if self.check_cons(row,col,player_code):                 # horizontal and vertical
+            self.scores[self.current_player] += self.pattern_scores['3-line']
+            remove_list = self.rest_con(row,col,player_code)
+            self.reset_mark(remove_list,player_code)
 ################################################################
     def reset_mark(self,lists,code):
       t = '1' if code == "X" else '2'
@@ -105,9 +112,37 @@ class GridDominationGameAI:
       if col+2 <5:
         if self.grid[row][col+1] == code and self.grid[row][col+2] == code:
           points.append((row,col+1))
-          points.append((row+2,col+2))
+          points.append((row,col+2))
           points.append((row,col))
       return points
+################################################################
+    def reset_L (self,row,col,code):
+          square_shape = [
+                  [(0, 0), (1, 0), (0, 1),(1,1)],
+                  [(0, 0), (0, 1), (-1, 0),(-1,1)],
+                  [(0, 0), (1, 0), (1, -1),(0,-1)],
+                  [(0, 0), (0, -1), (-1, 0),(-1,-1)],
+              ]
+          points=[]
+          for square in square_shape:
+            cnt=0
+            empty=0
+            for r,c in square:
+              fr=r+row
+              fc=c+col
+              if 0<= fr <5 and 0<=fc <5 and self.grid[fr][fc]==code:
+                cnt+=1
+                points.append((fr,fc))
+              else :
+                if cnt==3:
+                  return 1,points
+                empty+=1
+                if empty >1:
+                    points=[]
+                    break
+              if cnt==3:
+                return 1,points
+          return 0,list()
 ################################################################
     def reset_squ (self,row,col,code):
       square_shape = [
@@ -150,7 +185,7 @@ class GridDominationGameAI:
         for r in range(len(self.grid)):
             if self.grid[r][col] == code:
               points.append((r,col))
-              cnt+=1 
+              cnt+=1
         if cnt==5:
           return 1,points
         else:
@@ -242,7 +277,7 @@ class GridDominationGameAI:
               [(0, 0), (1, 0), (1, -1),(0,-1)],
               [(0, 0), (0, -1), (-1, 0),(-1,-1)],
           ]
-      for square in squares:
+      for square in square_shape:
         cnt=0
         for r,c in square:
           fr=r+row
@@ -255,7 +290,6 @@ class GridDominationGameAI:
             flag=1
       return flag
 ################################################################
-
 ################################################################
     def best_diagonal_move(self, player='O'):
       n = len(self.grid)
@@ -264,7 +298,7 @@ class GridDominationGameAI:
       score=7
       # Define directions for diagonals: [\ and /]
       directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
-
+      opponent_code = 'O' if self.current_player=='P1' else 'X'
       for row in range(n):
           for col in range(n):
             if self.grid[row][col] ==player :
@@ -273,14 +307,14 @@ class GridDominationGameAI:
                   empty_cell = None
                   for step in range(1,3):  # Check up to 2 more cells
                       r, c = row + dr * step, col + dc * step
-                      if 0 <= r < n and 0 <= c < n and self.grid [r][c] !='X':
+                      if 0 <= r < n and 0 <= c < n and self.grid [r][c] !=opponent_code:
                           if self.grid[r][c] == player:
                               count += 1
                           elif self.grid[r][c] == '.':
                               if empty_cell is None:
                                   empty_cell = (r, c)
                       else:
-                          # empty_cell=None
+                          empty_cell=None
                           break
                   # if empty_cell is not None:
                   #   if self.check_dig(empty_cell[0],empty_cell[1]) ==0:
@@ -302,6 +336,7 @@ class GridDominationGameAI:
       score=5
       useful = 1
       directions = [(-1,0),(1,0),(0,1),(0,-1)]
+      opponent_code = 'O' if self.current_player=='P1' else 'X'
       for row in range(n):
         for col in range(n):
           if self.grid[row][col] ==player :
@@ -310,7 +345,7 @@ class GridDominationGameAI:
               empty_cell = None
               for step in range(1,3):  # Check up to 2 more cells
                   r, c = row + dr * step, col + dc * step
-                  if 0 <= r < n and 0 <= c < n and self.grid [r][c] !='X':
+                  if 0 <= r < n and 0 <= c < n and self.grid [r][c] !=opponent_code:
                         if self.grid[r][c] == player:
                             count += 1
                         elif self.grid[r][c] == '.':
@@ -338,6 +373,7 @@ class GridDominationGameAI:
       score = 10
       min_move = float('inf')
       empty_cell = None
+      opponent_code = 'O' if self.current_player=='P1' else 'X'
       for row in range(n):
         for col in range(n):
           if self.grid[row][col] == player: # concsened of that point
@@ -348,7 +384,7 @@ class GridDominationGameAI:
                   if empty_cell is None:
                     empty_cell = (r,col)
                   else: # another empty cell but we already have a cell
-                    break 
+                    break
               else : # this point never gonna have veritacla line
                 break
             if empty_cell is not None: # we have a solution
@@ -357,13 +393,13 @@ class GridDominationGameAI:
               for r in range(n):
                 if self.grid[r][col] == player:
                   cnt += 1
-                elif self.grid[r][col]=='X':
+                elif self.grid[r][col]==opponent_code:
                   flag=1
                   break
               if min_move >(n-cnt) and flag==0:
                 min_move= n-cnt
                 best_move= empty_cell
-      return (best_move,min_move,score) if best_move else (None,-1)    
+      return (best_move,min_move,score) if best_move else (None,-1)
 ################################################################
     def check_best_move_H (self,player='O'):
       n= len(self.grid)
@@ -371,6 +407,7 @@ class GridDominationGameAI:
       score = 10
       min_move = float('inf')
       empty_cell = None
+      opponent_code = 'O' if self.current_player=='P1' else 'X'
       for row in range(n):
         for col in range(n):
           if self.grid[row][col] == player: # concsened of that point
@@ -381,7 +418,7 @@ class GridDominationGameAI:
                   if empty_cell is None:
                     empty_cell = (row,c)
                   else: # another empty cell but we already have a cell
-                    break 
+                    break
               else : # this point never gonna have veritacla line
                 break
             if empty_cell is not None: # we have a solution
@@ -390,78 +427,86 @@ class GridDominationGameAI:
               for c in range(n):
                 if self.grid[row][c] == player:
                   cnt += 1
-                elif self.grid[row][c]=='X':
+                elif self.grid[row][c]==opponent_code:
                   flag=1
                   break
               if min_move >(n-cnt) and flag==0:
                 min_move= n-cnt
                 best_move= empty_cell
-      return (best_move,min_move,score) if best_move else (None,-1) 
+      return (best_move,min_move,score) if best_move else (None,-1)
 ################################################################
-    # def check_L_shape(self, player='O'):
-    #     n = len(self.grid)
-    #     best_move = None
-    #     min_moves = float('inf')
-    #     score = 7  # Slightly higher score than line patterns
+    def check_L_shape(self, player='O'):
+        n = len(self.grid)
+        best_move = None
+        min_moves = float('inf')
+        score = 7  # Slightly higher score than line patterns
+        opponent_code = 'O' if self.current_player=='P1' else 'X'
+        # L-shape configurations (rotations)
+        square_shape = [
+                  [(0, 0), (1, 0), (0, 1),(1,1)],
+                  [(0, 0), (0, 1), (-1, 0),(-1,1)],
+                  [(0, 0), (1, 0), (1, -1),(0,-1)],
+                  [(0, 0), (0, -1), (-1, 0),(-1,-1)],
+        ]
 
-    #     # L-shape configurations (rotations)
-    #     l_shapes = [
-    #         [(0,0),(1,0),(0,1)],
-    #         [(0,0),(-1,0),(0,-1)],
-    #         [(0,0),(-1,0),(0,1)],
-    #         [(0,0),(0,-1),(1,0)]
-    #     ]
+        for row in range(n):
+            for col in range(n):
+              if self.grid[row][col] ==player :
+                for shape in square_shape:
+                    use=0
+                    empty_cell = None
+                    count_player_cells = 0
 
-    #     for row in range(n):
-    #         for col in range(n):
-    #           if self.grid[row][col] ==player :
-    #             for shape in l_shapes:
-    #                 empty_cell = None
-    #                 count_player_cells = 0
+                    for r, c in shape:
+                        check_row, check_col = row + r, col + c
 
-    #                 for r, c in shape:
-    #                     check_row, check_col = row + r, col + c
+                        if 0 <= check_row < n and 0 <= check_col < n and self.grid[check_row][check_col]!=opponent_code:
+                            if self.grid[check_row][check_col] == player:
+                                count_player_cells += 1
+                            elif self.grid[check_row][check_col] =='.':
+                                if empty_cell is None:
+                                    empty_cell = (check_row, check_col)
+                                # else:
+                                    # More than one empty cell
+                                    # break
+                        elif use>=2:
+                            break
+                        else:
+                            empty_cell = None
+                            use+=1
+                    if use>=2:
+                        empty_cell = None
+                        break
+                    # Check if L-shape is valid and has a single empty cell
+                    if (count_player_cells >= 2 and
+                        empty_cell is not None and
+                        self.grid[empty_cell[0]][empty_cell[1]] == '.'):
 
-    #                     if 0 <= check_row < n and 0 <= check_col < n and self.grid[check_row][check_col]!='X':
-    #                         if self.grid[check_row][check_col] == player:
-    #                             count_player_cells += 1
-    #                         elif self.grid[check_row][check_col] =='.':
-    #                             if empty_cell is None:
-    #                                 empty_cell = (check_row, check_col)
-    #                             else:
-    #                                 # More than one empty cell
-    #                                 break
+                        if min_moves > 3-count_player_cells:
+                            min_moves = 3-count_player_cells
+                            best_move = empty_cell
 
-    #                 # Check if L-shape is valid and has a single empty cell
-    #                 if (count_player_cells >= 2 and
-    #                     empty_cell is not None and
-    #                     self.grid[empty_cell[0]][empty_cell[1]] == '.'):
+                    # If no best move yet, consider potential L-shape
+                    elif (count_player_cells == 1 and
+                          empty_cell is not None and
+                          not best_move):
+                        min_moves = 2
+                        best_move = empty_cell
 
-    #                     if min_moves > 1:
-    #                         min_moves = 1
-    #                         best_move = empty_cell
-
-    #                 # If no best move yet, consider potential L-shape
-    #                 elif (count_player_cells == 1 and
-    #                       empty_cell is not None and
-    #                       not best_move):
-    #                     min_moves = 2
-    #                     best_move = empty_cell
-
-    #     return (best_move, min_moves, score) if best_move else (None, -1)
+        return (best_move, min_moves, score) if best_move else (None, -1)
 ################################################################
     def check_square(self, player='O'):
           n = len(self.grid)
           best_move = None
           min_moves = float('inf')
           score = 6  # Slightly higher score than line patterns
-
+          opponent_code = 'O' if self.current_player=='P1' else 'X'
           #  configurations (rotations)
           square_shape = [
               [(0, 0), (1, 0), (0, 1),(1,1)],
               [(0, 0), (0, 1), (-1, 0),(-1,1)],
               [(0, 0), (1, 0), (1, -1),(0,-1)],
-              [(0, 0), (0, -1), (-1, 0),(-1,1)],
+              [(0, 0), (0, -1), (-1, 0),(-1,-1)],
           ]
 
           for row in range(n):
@@ -474,7 +519,7 @@ class GridDominationGameAI:
                       for r, c in shape:
                           check_row, check_col = row + r, col + c
 
-                          if 0 <= check_row < n and 0 <= check_col < n and self.grid[check_row][check_col]!='X':
+                          if 0 <= check_row < n and 0 <= check_col < n and self.grid[check_row][check_col]!=opponent_code:
                               if self.grid[check_row][check_col] == player:
                                   count_player_cells += 1
                               elif self.grid[check_row][check_col] =='.':
@@ -485,13 +530,14 @@ class GridDominationGameAI:
                                   #     # empty_cell = None
                                   #     break
                           else:
+                            empty_cell = None
                             break
                       # Check if  is valid and has a single empty cell
                       if (count_player_cells >= 2 and
                           empty_cell is not None and
                           self.grid[empty_cell[0]][empty_cell[1]] == '.'):
 
-                          if min_moves > 1:
+                          if min_moves > 4-count_player_cells:
                               min_moves = 4-count_player_cells
                               best_move = empty_cell
 
@@ -514,21 +560,35 @@ class GridDominationGameAI:
       list_moves.append(self.check_square())
       list_moves.append(self.check_best_move_H())
       list_moves.append(self.check_best_move_v())
-      # list_moves.append(self.check_L_shape())
+      list_moves.append(self.check_L_shape())
       valid_moves = [move for move in list_moves if move[0] is not None]
       if not valid_moves:
-        # If no valid moves, return a random move or handle gracefully
-        return self.random_play()
-
+        # return self.random_play()
+          return self.minimize()
     # Sort valid moves based on score and minimum moves
       sorted_data = sorted(valid_moves, key=lambda x: (x[1], -x[2]))
+      # print(f'{(sorted_data[0][0][0])},{(sorted_data[0][0][1])}')
+      return sorted_data[0][0][0],sorted_data[0][0][1]
+################################################################
+    def minimize (self):
+      list_moves = []
+      list_moves.append(self.best_diagonal_move(player='X'))
+      list_moves.append(self.check_HV(player='X'))
+      list_moves.append(self.check_square(player='X'))
+      list_moves.append(self.check_best_move_H(player='X'))
+      list_moves.append(self.check_best_move_v(player='X'))
+      list_moves.append(self.check_L_shape(player='X'))
+      valid_moves = [move for move in list_moves if move[0] is not None]
+      if not valid_moves:
+        return self.random_play()
+      sorted_data = sorted(valid_moves, key=lambda x: (-x[2], x[1]))
       return sorted_data[0][0][0],sorted_data[0][0][1]
 ################################################################
     def random_play(self):
       while True:
         row = np.random.choice(range(5))
         col = np.random.choice(range(5))
-        if self.grid[row][col] != 'X' and self.grid[row][col]!='O':
+        if self.grid[row][col] =='.':
             return row, col
 ################################################################
     def play(self):
@@ -553,6 +613,8 @@ class GridDominationGameAI:
                 if self.start:
                   row, col = self.random_play()
                   self.make_move(row, col)
+                  # row, col = self.alpha_beta_pruning(depth=3, alpha=float('-inf'), beta=float('inf'), maximizing_player=True)[1]
+                  # self.make_move(row, col)
                   self.start=0
                 else:
                   row, col = self.best_move()
@@ -562,7 +624,71 @@ class GridDominationGameAI:
         winner = self.get_winner()
         print(f"Winner is: {winner}")
 ################################################################
+    # def alpha_beta_pruning(self, depth, alpha, beta, maximizing_player):
+    #     """
+    #     Perform Alpha-Beta Pruning for the grid domination game.
 
+    #     Args:
+    #         depth (int): Depth of the game tree to explore.
+    #         alpha (float): Alpha value for pruning.
+    #         beta (float): Beta value for pruning.
+    #         maximizing_player (bool): True if it's the maximizing player's turn.
+
+    #     Returns:
+    #         tuple: (best_score, best_move) for the given game state.
+    #     """
+    #     if depth == 0 or self.is_game_over():
+    #         # Evaluate the game state
+    #         return self.evaluate_board(), None
+
+    #     best_move = None
+
+    #     if maximizing_player:
+    #         max_eval = float('-inf')
+    #         for row in range(5):
+    #             for col in range(5):
+    #                 if self.is_valid_move(row, col):
+    #                     # Simulate move
+    #                     self.make_move(row, col)
+    #                     eval, _ = self.alpha_beta_pruning(depth - 1, alpha, beta, False)
+    #                     # Undo move
+    #                     self.grid[row][col] = "."
+    #                     self.current_player = "P1" if self.current_player == "P2" else "P2"
+    #                     if eval > max_eval:
+    #                         max_eval = eval
+    #                         best_move = (row, col)
+    #                     alpha = max(alpha, eval)
+    #                     if beta <= alpha:
+    #                         break
+    #         return max_eval, best_move
+    #     else:
+    #         min_eval = float('inf')
+    #         for row in range(5):
+    #             for col in range(5):
+    #                 if self.is_valid_move(row, col):
+    #                     # Simulate move
+    #                     self.make_move(row, col)
+    #                     eval, _ = self.alpha_beta_pruning(depth - 1, alpha, beta, True)
+    #                     # Undo move
+    #                     self.grid[row][col] = "."
+    #                     self.current_player = "P1" if self.current_player == "P2" else "P2"
+    #                     if eval < min_eval:
+    #                         min_eval = eval
+    #                         best_move = (row, col)
+    #                     beta = min(beta, eval)
+    #                     if beta <= alpha:
+    #                         break
+    #         return min_eval, best_move
+
+    # def evaluate_board(self):
+    #     """
+    #     Evaluate the current board state.
+
+    #     Returns:
+    #         int: Score for the current board state.
+    #     """
+    #     return self.scores["P1"] - self.scores["P2"]
+################################################################
 # Run the game with AI
 if __name__ == "__main__":
     game = GridDominationGameAI()
