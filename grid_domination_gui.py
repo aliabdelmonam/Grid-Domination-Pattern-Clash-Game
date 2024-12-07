@@ -57,22 +57,24 @@ class GridDominationGUI:
         )
         self.player_label.pack()
         
+    
     def on_cell_click(self, row, col):
-        """
-        Handle cell click events for player moves.
+    #Ensure it's the player's turn
+        if self.game.current_player != "P1":
+            messagebox.showwarning("Invalid Turn", "Wait for your turn!")
+            return
         
-        Args:
-            row (int): Row of the clicked cell
-            col (int): Column of the clicked cell
-        """
-        # Attempt to make a move
-        if self.game.make_move(row, col):
-            # Update the button appearance
-            # Player uses 'X' (blue)
+        # Validate move
+        if self.game.is_valid_move(row, col):
+            # Make player's move
+            self.game.make_move(row, col)
+            
+            # Update button for player's move
             self.buttons[row][col].config(
                 text='X', 
                 state=tk.DISABLED, 
-                disabledforeground='blue'
+                disabledforeground='blue',
+                bg='lightblue'  # Optional: add visual feedback
             )
             
             # Update scores
@@ -80,45 +82,49 @@ class GridDominationGUI:
                 text=f"Player Score: {self.game.scores['P1']} | AI Score: {self.game.scores['P2']}"
             )
             
-            # Check if game is over
+            # Check game over condition
             if self.game.is_game_over():
                 self.end_game()
+                return
+            
+            # Prepare for AI's turn
+            self.player_label.config(text="AI's Turn")
+            self.root.update()
+            
+            # AI's move selection
+            if self.game.start:
+                ai_row, ai_col = self.game.random_play()
+                self.game.start = 0
             else:
-                # AI's turn
-                self.player_label.config(text="AI's Turn")
-                self.root.update()
-                
-                # AI move
-                if self.game.start:
-                    ai_row, ai_col = self.game.random_play()
-                    self.game.start = 0
-                else:
-                    ai_row, ai_col = self.game.best_move()
-                
+                ai_row, ai_col = self.game.best_move()
+            
+            # Ensure AI move is valid
+            if self.game.is_valid_move(ai_row, ai_col):
                 self.game.make_move(ai_row, ai_col)
                 
-                # Update button for AI's move (AI uses 'O' in red)
+                # Update button for AI's move
                 self.buttons[ai_row][ai_col].config(
                     text='O', 
                     state=tk.DISABLED, 
-                    disabledforeground='red'
+                    disabledforeground='red',
+                    bg='lightsalmon'  # Optional: add visual feedback
                 )
                 
-                # Update scores again
+                # Update scores after AI's move
                 self.score_label.config(
                     text=f"Player Score: {self.game.scores['P1']} | AI Score: {self.game.scores['P2']}"
                 )
                 
-                # Check if game is over after AI move
+                # Check game over condition
                 if self.game.is_game_over():
                     self.end_game()
                 else:
                     # Back to player's turn
                     self.player_label.config(text="Your Turn")
+            else:
+                messagebox.showerror("AI Error", "AI could not make a valid move!")
         else:
-            # Invalid move
             messagebox.showwarning("Invalid Move", "This cell is already occupied!")
-    
     def end_game(self):
         """
         Handle end of game, show winner and final scores.
